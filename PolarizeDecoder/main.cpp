@@ -5,14 +5,11 @@
 
 using namespace std;
 
-void demosaic() {
-
-}
 
 int main() {
 	cv::Mat image;
-	image = cv::imread("./images/y00.bmp", cv::IMREAD_GRAYSCALE);
-	cout << " ( " << image.rows << " , " << image.cols << " ) " << image.depth() << "bit" << endl;
+	image = cv::imread("./images/201907120716.bmp", cv::IMREAD_GRAYSCALE);
+	cout << " ( " << image.rows << " , " << image.cols << " ) " << endl;
 
 	const int w = image.cols;
 	const int h = image.rows;
@@ -47,34 +44,49 @@ int main() {
 	temp.push_back(cv::Mat::zeros(h, w, CV_8UC1));
 
 
-	for (int i = 0; i < 3; i++) {
-		stringstream ss;
-		ss << "./images/" << i << "-" << i + 1 << "-" << i + 2 << "-180.png";
-
-		minMat = cv::min(pols[i], pols[(i + 1) % 4]);
-		minMat = cv::min(minMat, pols[(i + 2) % 4]);
-
-		temp[0] = (pols[i		   ] - minMat) * 10;
-		temp[1] = (pols[(i + 1) % 4] - minMat) * 10;
-		temp[2] = (pols[(i + 2) % 4] - minMat) * 10;
-		cv::merge(temp, pol);
-		resize(pol, pol, cv::Size(), 0.3, 0.3);
-		cv::imshow(ss.str(), pol);
-		//cv::imwrite(ss.str(), pol);
-		cv::waitKey(10);
-	}
 
 	pols[3] = 255;
 	cv::merge(pols, pol);
 
+	vector<unsigned char> phase;
+	for (int y = 0; y < h; y++) {
+		for (int x = 0; x < w; x++) {
+			double a = pols[0].at<char>(y, x) - pols[2].at<char>(y, x);
+			double b = pols[3].at<char>(y, x) - pols[1].at<char>(y, x);
+			double c = (b != 0) ? atan(a / b) * 180 / 3.141592 : 90;
+			c = c + 90;
+			phase.push_back((unsigned char)c % 180);
+		}
+	}
+	
+	vector<cv::Mat> po;
+	po.push_back(cv::Mat::zeros(h, w, CV_8UC1));
+	po.push_back(cv::Mat::zeros(h, w, CV_8UC1));
+	po.push_back(cv::Mat::zeros(h, w, CV_8UC1));
 
-//	cv::imshow("", image);
+	memcpy(po[0].data, phase.data(), phase.size() * sizeof(unsigned char));
+	po[0] += 80;
+	po[1] = 255;
+	po[2] = 255;
+
+	cv::merge(po, pol);
+	cv::cvtColor(pol, pol, cv::COLOR_HSV2RGB);
+	cv::imwrite("./images/p_201907120716.png", pol);
+	resize(pol, pol, cv::Size(), 0.3, 0.3);
+	cv::imshow("phase", pol);
+
+
+	resize(image, image, cv::Size(), 0.3, 0.3);
+	//cv::imshow("image", image);
 //	cv::imwrite("./images/image.png", image);
 
+
+
 	pols[3] = 255;
 	cv::merge(pols, pol);
-//	cv::imshow("pol", pol);
-	//cv::imwrite("./images/pol.png", pol);
+	resize(pol, pol, cv::Size(), 0.3, 0.3);
+	cv::imshow("pol", pol);
+	//cv::imwrite("./images/pol_180.png", pol);
 
 	cv::waitKey(0);
 }
